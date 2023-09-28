@@ -1,25 +1,22 @@
 #include "BluetoothSerial.h"
 #include "wifiScanner.h"
-#include <FS.h>
-#include <LittleFS.h>
-#include <ArduinoJson.h>
+#include <Preferences.h>
 
-#define FORMAT_LITTLEFS_IF_FAILED true
-DynamicJsonDocument Config(2048);
-JsonObject obj = Config.as<JsonObject>();
 
 
 unsigned long timestart = 0;
 unsigned long timeout = 0;
 int trial = 0;
 uint8_t isConnected = 0;
-String credentials_array[2];
+uint8_t isEEPROM = 0;
+
 
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run make menuconfig to and enable it
 #endif
 
 BluetoothSerial SerialBT;
+Preferences preferences;
 
 void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
   if (event == ESP_SPP_SRV_OPEN_EVT) {
@@ -36,13 +33,17 @@ void setup() {
   Serial.begin(115200);
   SerialBT.begin("Yalla");  //Bluetooth device name
   Serial.println("The device started, now you can pair it with bluetooth!");
-  if (credentials_array[0] == "") {
+  preferences.begin("wifi_config", false);
+
+  String temp_pref_ssid = preferences.getString("pref_ssid", "");
+  if (!temp_pref_ssid.length()) {
     while (!isConnected) { SerialBT.register_callback(callback); }
     wifiScan(SerialBT);
-    wifiInit(SerialBT, timeout, trial);
+    wifiInit(SerialBT, preferences, timeout, trial, isEEPROM);
   }
   else {
-    wifiInit(SerialBT, timeout, trial);
+    isEEPROM = 1;
+    wifiInit(SerialBT, preferences, timeout, trial, isEEPROM);
   }
 }
 
@@ -50,12 +51,13 @@ void loop() {
 
   if (trial > 3) {
     wifiScan(SerialBT);
-    wifiInit(SerialBT, timeout, trial);
+    wifiInit(SerialBT, preferences, timeout, trial, isEEPROM);
   } else {
     if ((millis() - timestart > 2000) && (WiFi.status() != WL_CONNECTED)) {
       SerialBT.println("Reconnecting to Wifi...");
       WiFi.disconnect();
-      wifiInit(SerialBT, timeout, trial);
+      isEEPROM = 1;
+      wifiInit(SerialBT, preferences, timeout, trial, isEEPROM);
       trial++;
       WiFi.reconnect();
       timestart = millis();

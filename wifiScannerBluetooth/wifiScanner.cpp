@@ -1,8 +1,11 @@
 #include "wifiScanner.h"
 
 int n = 0;
-String ssid = "";
 String pass = "";
+
+const char* pref_ssid = "";
+const char* pref_pass = "";
+
 static int no_ssid = 0;
 
 void wifiScan(BluetoothSerial &SerialBT) {
@@ -49,9 +52,22 @@ void wifiScan(BluetoothSerial &SerialBT) {
   }
 }
 
-void wifiInit(BluetoothSerial &SerialBT, unsigned long &timeout, int &trial) {
+void wifiInit(BluetoothSerial &SerialBT, Preferences &preferences, unsigned long &timeout, int &trial, uint8_t isEEPROM) {
+  if (isEEPROM) 
+  {
+    String temp_pref_ssid = preferences.getString("pref_ssid", "");
+    String temp_pref_pass = preferences.getString("pref_pass");
+
+    pref_ssid = temp_pref_ssid.c_str();
+    pass = temp_pref_pass.c_str();
+  }
+  else
+  {
+    String temp_pref_ssid = WiFi.SSID(no_ssid - 1);
+    pref_ssid = temp_pref_ssid.c_str();
+  }
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WiFi.SSID(no_ssid - 1), pass);
+  WiFi.begin(pref_ssid, pass);
 
   SerialBT.print("Connecting to Wifi...");
   timeout = millis();
@@ -77,14 +93,19 @@ void wifiInit(BluetoothSerial &SerialBT, unsigned long &timeout, int &trial) {
     Serial.print("Connected successfully");
     Serial.print("IP Address : ");
     Serial.print(WiFi.localIP());
-    WiFi.begin(WiFi.SSID(no_ssid - 1), pass);
+    WiFi.begin(pref_ssid, pass);
     Serial.print(WiFi.localIP());
+
+    preferences.putString("pref_ssid", pref_ssid);
+    preferences.putString("pref_pass", pass);
+    WiFi.scanDelete();
     trial = 0;
   }
 }
 
 void wifiConnection(BluetoothSerial &SerialBT) {
-  ssid = WiFi.SSID(no_ssid - 1);
+  String temp_pref_ssid = WiFi.SSID(no_ssid - 1);
+  pref_ssid = temp_pref_ssid.c_str();
   pass.trim();
 
   if ((WiFi.encryptionType(no_ssid - 1)) != WIFI_AUTH_OPEN) {

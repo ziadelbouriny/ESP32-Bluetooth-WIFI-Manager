@@ -2,13 +2,11 @@
 #define WIFISCANNER_H
 #include "WiFi.h"
 #include "BluetoothSerial.h"
+#include <Preferences.h>
 
-extern int n;
-extern String ssid;
-extern String pass;
 
 void wifiScan(BluetoothSerial &SerialBT);
-void wifiInit(BluetoothSerial &SerialBT, unsigned long &timeout, int &trial);
+void wifiInit(BluetoothSerial &SerialBT, Preferences &preferences, unsigned long &timeout, int &trial, uint8_t isEEPROM);
 void wifiConnection(BluetoothSerial &SerialBT);
 
 #endif
